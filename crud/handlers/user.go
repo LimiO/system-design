@@ -68,6 +68,7 @@ func (h *HandlerManager) GetUser(w http.ResponseWriter, r *http.Request) {
 		log.Printf("failed to get user: %v", err)
 		return
 	}
+	user.Password = ""
 
 	fmt.Printf("user %q successfuly getted\n", user.Username)
 	WriteJson(w, user)
@@ -103,13 +104,13 @@ func (h *HandlerManager) PutUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	username := chi.URLParam(r, "username")
-	user, err := h.GetUserOrWriteError(w, username)
+	oldUser, err := h.GetUserOrWriteError(w, username)
 	if err != nil {
 		log.Printf("failed to get user: %v", err)
 		return
 	}
 
-	user, err = DecodeHttpBody[models.User](r.Body)
+	user, err := DecodeHttpBody[models.User](r.Body)
 	if err != nil {
 		log.Printf("failed to decode http body: %v", err)
 		WriteBadRequest(w, err.Error())
@@ -120,6 +121,8 @@ func (h *HandlerManager) PutUser(w http.ResponseWriter, r *http.Request) {
 		WriteValidationErrors(w, validationErrors)
 		return
 	}
+
+	FillByDefaults(user, oldUser)
 
 	user.Username = username
 	if err = h.dbManager.UpdateUser(user); err != nil {

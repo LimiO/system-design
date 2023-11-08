@@ -18,15 +18,17 @@ const (
 		first_name VARCHAR(64) NOT NULL,
 		last_name VARCHAR(64) NOT NULL,
 		email VARCHAR(64) NOT NULL, 
-		phone INT NOT NULL
+		phone INT NOT NULL,
+		password VARCHAR(64)
 	)`
 	getUserQuery    = `SELECT * FROM users WHERE username = ?;`
-	createUserQuery = `INSERT INTO users(username, first_name, last_name, email, phone) VALUES (?, ?, ?, ?, ?);`
+	createUserQuery = `INSERT INTO users(username, first_name, last_name, email, phone, password) VALUES (?, ?, ?, ?, ?, ?);`
 	updateUserQuery = `UPDATE users
 	SET first_name=?,
 		last_name=?,
 		email=?,
-		phone=?
+		phone=?,
+		password=?
 	WHERE username=?;
 	`
 	deleteUserQuery = `DELETE FROM users WHERE username = ?;`
@@ -72,14 +74,14 @@ func (m *Manager) GetUser(user *models.User) (*models.User, error) {
 		return nil, fmt.Errorf("failed to get user %q: %v", user.Username, err)
 	}
 	result := &models.User{}
-	if err := row.Scan(&result.Username, &result.FirstName, &result.LastName, &result.Email, &result.Phone); err != nil {
+	if err := row.Scan(&result.Username, &result.FirstName, &result.LastName, &result.Email, &result.Phone, &result.Password); err != nil {
 		return nil, err
 	}
 	return result, nil
 }
 
 func (m *Manager) CreateUser(user *models.User) error {
-	_, err := m.db.Exec(createUserQuery, user.Username, user.FirstName, user.LastName, user.Email, user.Phone)
+	_, err := m.db.Exec(createUserQuery, user.Username, user.FirstName, user.LastName, user.Email, user.Phone, user.Password)
 	if err != nil {
 		return fmt.Errorf("failed to create user %q: %v", user.Username, err)
 	}
@@ -91,7 +93,7 @@ func (m *Manager) UpdateUser(user *models.User) error {
 	if err != nil {
 		return fmt.Errorf("failed to prepare update user query: %v", err)
 	}
-	_, err = preparation.Exec(user.FirstName, user.LastName, user.Email, user.Phone, user.Username)
+	_, err = preparation.Exec(user.FirstName, user.LastName, user.Email, user.Phone, user.Password, user.Username)
 	fmt.Println(user.Username, user.Email)
 	if err != nil {
 		return fmt.Errorf("failed to update user %q: %v", user.Username, err)
