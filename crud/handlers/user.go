@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"io"
 	"log"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
+
 	"user-service/db"
 	"user-service/pkg/models"
 )

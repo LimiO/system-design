@@ -1,10 +1,10 @@
 FROM golang:1.18
 
 
-WORKDIR /
+WORKDIR /crud
 COPY go.* ./
 RUN go mod download
 
 
-EXPOSE 8080
+CMD ["go", "run", "cmd/bin/server/main.go"]
 

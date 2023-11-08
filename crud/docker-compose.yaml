@@ -2,8 +2,11 @@ version: '3.9'
 services:
   user-api:
     build:
-      dockerfile: .
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
-    command: "go run cmd/bin/server/main.go"
+    volumes:
+      - ./:/crud:rw
+    # command: "go run cmd/bin/server/main.go"
+    # command: "ls -la ."
 
