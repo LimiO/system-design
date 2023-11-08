@@ -1,0 +1,9 @@
+version: '3.9'
+services:
+  user-api:
+    build:
+      dockerfile: .
+    ports:
+      - "8080:8080"
+    command: "go run cmd/bin/server/main.go"
+

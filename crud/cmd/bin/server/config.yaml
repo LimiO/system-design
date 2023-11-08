@@ -1,0 +1,6 @@
+server:
+  addr: "localhost"
+  port: 8000
+  timeout:
+      read: 10s
+      write: 10s
