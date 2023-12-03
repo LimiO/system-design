@@ -1,2 +1,6 @@
 users.db
+payment.db
+passwords.db
+tester.py
+purchases.db
 .idea
