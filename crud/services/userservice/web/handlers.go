@@ -1,32 +1,20 @@
-package handlers
+package web
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
+	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
+	"onlinestore/pkg/models"
+	"onlinestore/pkg/web"
 
-	"github.com/go-chi/chi/v5"
-
-	"user-service/db"
-	"user-service/pkg/models"
+	"onlinestore/services/userservice/db"
 )
 
 type HandlerManager struct {
 	dbManager *db.Manager
-}
-
-func DecodeHttpBody[T interface{}](body io.ReadCloser) (*T, error) {
-	t := new(T)
-	decoder := json.NewDecoder(body)
-	decoder.DisallowUnknownFields()
-	if err := decoder.Decode(t); err != nil {
-		return nil, fmt.Errorf("failed to read data: %v", err)
-	}
-	return t, nil
 }
 
 func NewHandlerManager() (*HandlerManager, error) {
@@ -44,10 +32,10 @@ func (h *HandlerManager) GetUserOrWriteError(w http.ResponseWriter, username str
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			log.Printf("user not found: %v", err)
-			WriteNotFound(w)
+			web.WriteNotFound(w, fmt.Sprintf("user not found: %v", err))
 		} else {
 			log.Printf("failed to get user: %v", err)
-			WriteBadRequest(w, err.Error())
+			web.WriteBadRequest(w, err.Error())
 		}
 		return nil, fmt.Errorf("get user error: %v", err)
 	}
@@ -56,7 +44,7 @@ func (h *HandlerManager) GetUserOrWriteError(w http.ResponseWriter, username str
 
 func (h *HandlerManager) Health(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	WriteStatusOK(w)
+	web.WriteStatusOK(w)
 }
 
 func (h *HandlerManager) GetUser(w http.ResponseWriter, r *http.Request) {
@@ -71,33 +59,33 @@ func (h *HandlerManager) GetUser(w http.ResponseWriter, r *http.Request) {
 	user.Password = ""
 
 	fmt.Printf("user %q successfuly getted\n", user.Username)
-	WriteJson(w, user)
+	web.WriteData(w, user)
 }
 
 func (h *HandlerManager) PostUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	user, err := DecodeHttpBody[models.User](r.Body)
+	user, err := web.DecodeHttpBody[models.User](r.Body)
 	if err != nil {
 		log.Printf("failed to decode http body: %v", err)
-		WriteBadRequest(w, err.Error())
+		web.WriteBadRequest(w, err.Error())
 		return
 	}
 
 	validationErrors := user.Validate()
 	if len(validationErrors) > 0 {
-		WriteValidationErrors(w, validationErrors)
+		web.WriteValidationErrors(w, validationErrors)
 		return
 	}
 
 	if err = h.dbManager.CreateUser(user); err != nil {
 		log.Printf("failed to create user: %v", err)
-		WriteBadRequest(w, err.Error())
+		web.WriteBadRequest(w, err.Error())
 		return
 	}
 
 	fmt.Printf("user %q successfuly created\n", user.Username)
-	WriteStatusOK(w)
+	web.WriteStatusOK(w)
 }
 
 func (h *HandlerManager) PutUser(w http.ResponseWriter, r *http.Request) {
@@ -110,29 +98,29 @@ func (h *HandlerManager) PutUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := DecodeHttpBody[models.User](r.Body)
+	newData, err := web.DecodeHttpBody[models.User](r.Body)
 	if err != nil {
 		log.Printf("failed to decode http body: %v", err)
-		WriteBadRequest(w, err.Error())
+		web.WriteBadRequest(w, err.Error())
 		return
 	}
-	validationErrors := user.Validate()
+	validationErrors := newData.Validate()
 	if len(validationErrors) > 0 {
-		WriteValidationErrors(w, validationErrors)
+		web.WriteValidationErrors(w, validationErrors)
 		return
 	}
 
-	FillByDefaults(user, oldUser)
+	FillByDefaults(newData, oldUser)
 
-	user.Username = username
-	if err = h.dbManager.UpdateUser(user); err != nil {
+	newData.Username = username
+	if err = h.dbManager.UpdateUser(newData); err != nil {
 		log.Printf("failed to update user: %v", err)
-		WriteBadRequest(w, err.Error())
+		web.WriteBadRequest(w, err.Error())
 		return
 	}
 
 	fmt.Printf("user %q successfuly updated\n", username)
-	WriteStatusOK(w)
+	web.WriteStatusOK(w)
 }
 
 func (h *HandlerManager) DeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -147,10 +135,10 @@ func (h *HandlerManager) DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	if err = h.dbManager.DeleteUser(user); err != nil {
 		log.Printf("failed to delete user: %v", err)
-		WriteBadRequest(w, err.Error())
+		web.WriteBadRequest(w, err.Error())
 		return
 	}
 
 	fmt.Printf("user %q successfuly deleted\n", username)
-	WriteStatusOK(w)
+	web.WriteStatusOK(w)
 }

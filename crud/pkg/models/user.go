@@ -1,8 +1,9 @@
-package models
+package user
 
 import (
 	"fmt"
-	"user-service/pkg/validation"
+
+	"onlinestore/pkg/validation"
 )
 
 var (
@@ -43,25 +44,25 @@ func (u *User) GetPassword() string {
 	return u.Password
 }
 
-func (u *User) Validate() []*validation.ValidationErrorItem {
-	var result []*validation.ValidationErrorItem
+func (u *User) Validate() []*validation.ErrorItem {
+	var result []*validation.ErrorItem
 	if err := validation.ValidateEmail(u.Email); err != nil {
-		result = append(result, validation.NewValidationErrorItem(fmt.Sprintf("invalid email: %v", err), InvalidValue))
+		result = append(result, validation.NewErrorItem(fmt.Sprintf("invalid email: %v", err), InvalidValue))
 	}
 	if len(u.Email) > 64 {
-		result = append(result, validation.NewValidationErrorItem("email len can't be greater, than 64", InvalidLengthType))
+		result = append(result, validation.NewErrorItem("email len can't be greater, than 64", InvalidLengthType))
 	}
 	if len(u.Username) > 64 {
-		result = append(result, validation.NewValidationErrorItem("username len can't be greater, than 64", InvalidLengthType))
+		result = append(result, validation.NewErrorItem("username len can't be greater, than 64", InvalidLengthType))
 	}
 	if len(u.FirstName) > 64 {
-		result = append(result, validation.NewValidationErrorItem("first name len can't be greater, than 64", InvalidLengthType))
+		result = append(result, validation.NewErrorItem("first name len can't be greater, than 64", InvalidLengthType))
 	}
 	if len(u.LastName) > 64 {
-		result = append(result, validation.NewValidationErrorItem("first name len can't be greater, than 64", InvalidLengthType))
+		result = append(result, validation.NewErrorItem("first name len can't be greater, than 64", InvalidLengthType))
 	}
 	if len(u.Password) > 64 {
-		result = append(result, validation.NewValidationErrorItem("password len can't be greater, than 64", InvalidLengthType))
+		result = append(result, validation.NewErrorItem("password len can't be greater, than 64", InvalidLengthType))
 	}
 	return result
 }
