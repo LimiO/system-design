@@ -6,10 +6,10 @@ import (
 	"log"
 	"net/http"
 
-	"onlinestore/pkg/server"
+	"onlinestore/pkg/web"
 )
 
-func RecoverRequest(next http.Handler) http.Handler {
+func (m *MiddlewareManager) RecoverRequest(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			v := recover()
@@ -21,16 +21,16 @@ func RecoverRequest(next http.Handler) http.Handler {
 				err = fmt.Errorf("%+v", v)
 			}
 
-			HandleError(w, r, err)
+			m.HandleError(w, r, err)
 		}()
 		next.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(fn)
 }
 
-func HandleError(w http.ResponseWriter, _ *http.Request, err error) {
+func (m *MiddlewareManager) HandleError(w http.ResponseWriter, _ *http.Request, err error) {
 	w.WriteHeader(500)
-	if err = json.NewEncoder(w).Encode(server.ResponseMetadata{
+	if err = json.NewEncoder(w).Encode(web.ResponseMetadata{
 		Code:  1,
 		Error: err.Error(),
 	}); err != nil {

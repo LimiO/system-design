@@ -1,30 +1,25 @@
 package web
 
-import "onlinestore/pkg/models"
-
-type BuyRequest struct {
-	Count     int `json:"count"`
-	Price     int `json:"price"`
-	ProductID int `json:"product_id"`
+type AddBalanceRequest struct {
+	Username string `json:"username"`
+	Amount   int    `json:"amount"`
 }
 
-type BuyResponse struct {
-	OrderID int `json:"order_id"`
-	Total   int `json:"total_price"`
+type AddBalanceResponse struct {
 }
 
-type CommitOrderRequest struct {
-	OrderID int `json:"order_id"`
+type SubBalanceRequest struct {
+	Username string `json:"username"`
+	Amount   int    `json:"amount"`
 }
 
-type CommitOrderResponse struct {
+type SubBalanceResponse struct {
 }
 
-type GetOrderRequest struct {
-	OrderID  int    `json:"order_id"`
+type GetBalanceRequest struct {
 	Username string `json:"username"`
 }
 
-type GetOrderResponse struct {
-	Order *models.Order `json:"order"`
+type GetBalanceResponse struct {
+	Balance int `json:"balance"`
 }

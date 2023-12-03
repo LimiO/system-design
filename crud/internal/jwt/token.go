@@ -18,7 +18,7 @@ func NewTokenManager(secret string) *TokenManager {
 func (t *TokenManager) CreateToken(username string) (string, error) {
 	maker := jwt.NewWithClaims(jwt.SigningMethodHS256,
 		jwt.MapClaims{
-			"username": username,
+			"sub": username,
 		})
 	s, err := maker.SignedString([]byte(t.secret))
 	if err != nil {
@@ -27,19 +27,19 @@ func (t *TokenManager) CreateToken(username string) (string, error) {
 	return s, nil
 }
 
-func (t *TokenManager) ValidateToken(token string) error {
+func (t *TokenManager) GetClaims(token string) (*jwt.MapClaims, error) {
 	claims := &jwt.MapClaims{}
 	parsed, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected data signing method: %v", token.Header["alg"])
 		}
-		return t.secret, nil
+		return []byte(t.secret), nil
 	})
 	if err != nil {
-		return fmt.Errorf("failed to parse with claims: %v", err)
+		return nil, fmt.Errorf("failed to parse with claims: %v", err)
 	}
 	if !parsed.Valid {
-		return fmt.Errorf("token is invalid")
+		return nil, fmt.Errorf("token is invalid")
 	}
-	return nil
+	return claims, nil
 }

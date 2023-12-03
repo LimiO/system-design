@@ -2,20 +2,16 @@ package web
 
 import (
 	"fmt"
-	"log"
 	"net/http"
-
 	"onlinestore/internal/jwt"
 	"onlinestore/pkg/web"
-	"onlinestore/services/authorizationservice/db"
+	"onlinestore/services/purchaseservice/db"
 )
 
 type HandlerManager struct {
 	dbManager    *db.Manager
 	tokenManager *jwt.TokenManager
 }
-
-// TODO(albert-si) replace all internal errors with log fatal
 
 func NewHandlerManager(jwtSecret string) (*HandlerManager, error) {
 	tokenManager := jwt.NewTokenManager(jwtSecret)
@@ -29,65 +25,60 @@ func NewHandlerManager(jwtSecret string) (*HandlerManager, error) {
 	}, nil
 }
 
-func (h *HandlerManager) Register(w http.ResponseWriter, r *http.Request) {
-	req, err := web.DecodeHttpBody[TokenRequest](r.Body)
+func (h *HandlerManager) Buy(w http.ResponseWriter, r *http.Request) {
+	req, err := web.DecodeHttpBody[BuyRequest](r.Body)
 	if err != nil {
 		web.WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if req.Password == "" || req.Username == "" {
-		web.WriteError(w, fmt.Sprintf("empty password or username"), http.StatusBadRequest)
-		return
-	}
 
-	passInfo, err := h.dbManager.GetUserPassword(req.Username)
-	if err != nil {
-		log.Fatalf("failed to get user password: %v", err)
-	}
-	if passInfo != nil {
-		web.WriteError(w, fmt.Sprintf("user already exists"), http.StatusConflict)
-		return
-	}
-
-	hashed := jwt.MakeMD5Hash(req.Password)
-	if err = h.dbManager.CreateUserPassword(req.Username, hashed); err != nil {
+	username := web.GetLogin(r.Context())
+	if err = ValidateBuyRequest(req); err != nil {
 		web.WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	token, err := h.tokenManager.CreateToken(req.Username)
+	orderID, err := h.dbManager.CreateOrder(req.ProductID, req.Count, req.Price, username)
 	if err != nil {
 		web.WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	web.WriteData(w, &TokenResponse{Token: token})
+	web.WriteData(w, BuyResponse{OrderID: orderID, Total: req.Count * req.Price})
+	return
 }
 
-func (h *HandlerManager) GetToken(w http.ResponseWriter, r *http.Request) {
-	req, err := web.DecodeHttpBody[TokenRequest](r.Body)
+func (h *HandlerManager) CommitOrder(w http.ResponseWriter, r *http.Request) {
+	req, err := web.DecodeHttpBody[CommitOrderRequest](r.Body)
 	if err != nil {
 		web.WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	passInfo, err := h.dbManager.GetUserPassword(req.Username)
+	err = h.dbManager.UpdateOrder(req.OrderID, db.Paid)
 	if err != nil {
 		web.WriteError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if passInfo == nil {
-		web.WriteError(w, fmt.Sprintf("user not found"), http.StatusNotFound)
 		return
 	}
 
-	if passInfo.Passhash != jwt.MakeMD5Hash(req.Password) {
-		web.WriteError(w, fmt.Sprintf("wrong password"), http.StatusForbidden)
-		return
-	}
+	web.WriteData(w, CommitOrderResponse{})
+	return
+}
 
-	token, err := h.tokenManager.CreateToken(req.Username)
+func (h *HandlerManager) GetOrders(w http.ResponseWriter, r *http.Request) {
+	req, err := web.DecodeHttpBody[GetOrderRequest](r.Body)
 	if err != nil {
 		web.WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	web.WriteData(w, &TokenResponse{Token: token})
+
+	// TODO(albert-si) add username to all requests and filter orders by username
+	order, err := h.dbManager.GetOrder(req.OrderID)
+	if err != nil {
+		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if order == nil {
+		web.WriteError(w, fmt.Sprintf("order not found"), http.StatusNotFound)
+		return
+	}
+	web.WriteData(w, &GetOrderResponse{Order: order})
 }

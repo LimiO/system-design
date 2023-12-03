@@ -6,11 +6,11 @@ import (
 
 	"onlinestore/internal/config"
 	baseweb "onlinestore/pkg/web"
-	"onlinestore/services/purchaseservice/web"
+	"onlinestore/services/paymentservice/web"
 )
 
 var (
-	configPath = "services/purchaseservice/cmd/config.yaml"
+	configPath = "services/paymentservice/cmd/config.yaml"
 )
 
 type Config struct {

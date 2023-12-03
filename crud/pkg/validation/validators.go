@@ -5,13 +5,13 @@ import (
 	"regexp"
 )
 
-type ValidationErrorItem struct {
+type ErrorItem struct {
 	Msg            string `json:"Msg"`
 	ValidationType string `json:"type"`
 }
 
-func NewValidationErrorItem(msg, validationType string) *ValidationErrorItem {
-	return &ValidationErrorItem{
+func NewErrorItem(msg, validationType string) *ErrorItem {
+	return &ErrorItem{
 		Msg:            msg,
 		ValidationType: validationType,
 	}

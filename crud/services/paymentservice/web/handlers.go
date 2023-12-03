@@ -3,9 +3,11 @@ package web
 import (
 	"fmt"
 	"net/http"
+	"onlinestore/pkg/models"
+
 	"onlinestore/internal/jwt"
 	"onlinestore/pkg/web"
-	"onlinestore/services/purchaseservice/db"
+	"onlinestore/services/paymentservice/db"
 )
 
 type HandlerManager struct {
@@ -25,60 +27,57 @@ func NewHandlerManager(jwtSecret string) (*HandlerManager, error) {
 	}, nil
 }
 
-func (h *HandlerManager) Buy(w http.ResponseWriter, r *http.Request) {
-	req, err := web.DecodeHttpBody[BuyRequest](r.Body)
+func (h *HandlerManager) AddBalance(w http.ResponseWriter, r *http.Request) {
+	req, err := web.DecodeHttpBody[AddBalanceRequest](r.Body)
 	if err != nil {
 		web.WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	username := web.GetLogin(r.Context())
-	if err = ValidateBuyRequest(req); err != nil {
-		web.WriteError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	orderID, err := h.dbManager.CreateOrder(req.ProductID, req.Count, req.Price, username)
+	err = h.dbManager.AddBalance(req.Username, req.Amount)
 	if err != nil {
 		web.WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	web.WriteData(w, BuyResponse{OrderID: orderID, Total: req.Count * req.Price})
+
+	web.WriteStatusOK(w)
 	return
 }
 
-func (h *HandlerManager) CommitOrder(w http.ResponseWriter, r *http.Request) {
-	req, err := web.DecodeHttpBody[CommitOrderRequest](r.Body)
-	if err != nil {
-		web.WriteError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	err = h.dbManager.UpdateOrder(req.OrderID, db.Paid)
+func (h *HandlerManager) SubBalance(w http.ResponseWriter, r *http.Request) {
+	req, err := web.DecodeHttpBody[SubBalanceRequest](r.Body)
 	if err != nil {
 		web.WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	web.WriteData(w, CommitOrderResponse{})
+	err = h.dbManager.SubBalance(req.Username, req.Amount)
+	if err != nil {
+		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	web.WriteStatusOK(w)
 	return
 }
 
-func (h *HandlerManager) GetOrders(w http.ResponseWriter, r *http.Request) {
-	req, err := web.DecodeHttpBody[GetOrderRequest](r.Body)
+func (h *HandlerManager) GetBalance(w http.ResponseWriter, r *http.Request) {
+	req, err := web.DecodeHttpBody[GetBalanceRequest](r.Body)
 	if err != nil {
 		web.WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// TODO(albert-si) add username to all requests and filter orders by username
-	order, err := h.dbManager.GetOrder(req.OrderID)
+	balanceInfo, err := h.dbManager.GetBalance(req.Username)
 	if err != nil {
 		web.WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	if order == nil {
-		web.WriteError(w, fmt.Sprintf("order not found"), http.StatusNotFound)
-		return
+	if balanceInfo == nil {
+		balanceInfo = &models.BalanceInfo{
+			Balance: 0,
+		}
 	}
-	web.WriteData(w, &GetOrderResponse{Order: order})
+	web.WriteData(w, &GetBalanceResponse{Balance: balanceInfo.Balance})
+	return
 }

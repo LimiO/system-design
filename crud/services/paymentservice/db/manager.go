@@ -1,53 +1,35 @@
 package db
 
 import (
-	"context"
 	"fmt"
 
 	"onlinestore/db"
 	"onlinestore/pkg/models"
 )
 
-type PaidStatus int
-
-var (
-	NotPaid   PaidStatus = 0
-	Paid      PaidStatus = 1
-	Cancelled PaidStatus = 2
+const (
+	dbName    = "payment.db"
+	initQuery = `
+	CREATE TABLE IF NOT EXISTS balance (
+		username VARCHAR(64) NOT NULL PRIMARY KEY,
+		balance INTEGER NOT NULL
+	);
+	CREATE TABLE IF NOT EXISTS history (
+		tx_id INTEGER NOT NULL PRIMARY KEY,
+		username VARCHAR(64) NOT NULL,
+		diff INTEGER NOT NULL
+	);`
+	insertOrIgnore = `INSERT OR IGNORE INTO balance (username, balance) VALUES (?, 0)`
 )
 
-const (
-	dbName    = "purchases.db"
-	initQuery = `
-	CREATE TABLE IF NOT EXISTS products (
-		product_id INTEGER NOT NULL PRIMARY KEY,
-		count INTEGER NOT NULL,
-		price INTEGER NOT NULL
-	);
-	CREATE TABLE IF NOT EXISTS orders (
-		order_id INTEGER NOT NULL PRIMARY KEY,
-		product_id INTEGER NOT NULL,
-		price INTEGER NOT NULL,
-		count INTEGER NOT NULL,
-		username VARCHAR(64) NOT NULL,
-		paid INTEGER NOT NULL
-	);
-	INSERT OR IGNORE INTO products(product_id, count, price) VALUES(0, 10, 50);
-	INSERT OR IGNORE INTO products(product_id, count, price) VALUES(1, 20, 30);
-	`
-	getOrderQuery   = `SELECT * FROM orders WHERE order_id = ?;`
-	getProductQuery = `SELECT * FROM products WHERE product_id = ?;`
-	addProductQuery = `UPDATE products
-		SET count = count + ?
-		WHERE product_id = ? AND (count + ?) >= 0;`
-	subProductQuery = `UPDATE products
-		SET count = count - ?
-		WHERE product_id = ? AND (count - ?) >= 0 AND price = ?;`
-	createOrderQuery = `INSERT INTO orders(product_id, price, count, username, paid)
-		VALUES(?, (SELECT products.price FROM products WHERE product_id = ?), ?, ?, 0);`
-	updateOrderQuery = `UPDATE orders
-		SET paid = ?
-		WHERE order_id = ?;`
+var (
+	getBalanceQuery = fmt.Sprintf("%s; SELECT * FROM balance WHERE username = ?;", insertOrIgnore)
+	addBalanceQuery = fmt.Sprintf(`%s; UPDATE balance
+		SET balance = balance + ?
+		WHERE username = ?;`, insertOrIgnore)
+	subBalanceQuery = fmt.Sprintf(`%s; UPDATE balance
+		SET balance = balance - ?
+		WHERE username = ? AND balance - ? >= 0;`, insertOrIgnore)
 )
 
 type Manager struct {
@@ -64,73 +46,34 @@ func NewManager() (*Manager, error) {
 	}, nil
 }
 
-func (m *Manager) GetOrder(orderID int) (*models.Order, error) {
-	result := &models.Order{}
-	scanFields := []interface{}{&result.OrderID, &result.ProductID, &result.Price, &result.Count, &result.Username, &result.Paid}
-	found, err := m.Get(getOrderQuery, []interface{}{orderID}, scanFields)
+func (m *Manager) GetBalance(username string) (*models.BalanceInfo, error) {
+	result := &models.BalanceInfo{}
+	scanFields := []interface{}{&result.Username, &result.Balance}
+	found, err := m.Get(getBalanceQuery, []interface{}{username, username}, scanFields)
 	if found {
 		return result, nil
 	}
 	return nil, err
 }
 
-func (m *Manager) GetProduct(productID int) (*models.Product, error) {
-	result := &models.Product{}
-	scanFields := []any{&result.ProductID, &result.Price, &result.Count}
-	found, err := m.Get(getProductQuery, []any{productID}, scanFields)
-	if found {
-		return result, nil
-	}
-	return nil, err
-}
-
-func (m *Manager) AddProduct(productID int, countToChange int) error {
-	_, err := m.GetDB().Exec(addProductQuery, productID, countToChange)
+func (m *Manager) AddBalance(username string, amount int) error {
+	result, err := m.GetDB().Exec(addBalanceQuery, username, amount, username)
 	if err != nil {
-		return fmt.Errorf("failed to add product %q count: %v", productID, err)
+		return fmt.Errorf("failed to add balance: %v", err)
+	}
+	if affected, err := result.RowsAffected(); affected == 0 || err != nil {
+		return fmt.Errorf("zero rows affected")
 	}
 	return nil
 }
 
-func (m *Manager) CreateOrder(productID int, count int, price int, username string) (int, error) {
-	var err error
-	tx, err := m.GetDB().BeginTx(context.Background(), nil)
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		} else {
-			_ = tx.Commit()
-		}
-	}()
-
-	result, err := m.GetDB().Exec(subProductQuery, count, productID, count, price)
+func (m *Manager) SubBalance(username string, amount int) error {
+	result, err := m.GetDB().Exec(subBalanceQuery, username, amount, username, amount)
 	if err != nil {
-		return 0, fmt.Errorf("failed to sub product %q count: %v", productID, err)
+		return fmt.Errorf("failed to sub balance: %v", err)
 	}
-	affected, err := result.RowsAffected()
-	if err != nil || affected == 0 {
-		return 0, fmt.Errorf("can't sub from products")
-	}
-
-	result, err = m.GetDB().Exec(createOrderQuery, productID, productID, count, username)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create order: %v", err)
-	}
-	id, err := result.LastInsertId()
-	if err != nil || id == 0 {
-		return 0, fmt.Errorf("failed to get last inserted id: %v", err)
-	}
-	return int(id), nil
-}
-
-func (m *Manager) UpdateOrder(orderID int, status PaidStatus) error {
-	result, err := m.GetDB().Exec(updateOrderQuery, status, orderID)
-	if err != nil {
-		return fmt.Errorf("failed to create order: %v", err)
-	}
-	affected, err := result.RowsAffected()
-	if affected == 0 || err != nil {
-		return fmt.Errorf("failed to update order %d, may be order not found", orderID)
+	if affected, err := result.RowsAffected(); affected == 0 || err != nil {
+		return fmt.Errorf("zero rows affected")
 	}
 	return nil
 }

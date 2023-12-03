@@ -24,8 +24,11 @@ func NewServer(addr string, port int, jwtSecret string) (*Server, error) {
 	}
 	mwManager := middlewares.NewMiddlewareManager(jwtSecret)
 	r.Use(mwManager.RecoverRequest)
+	r.Use(mwManager.Authenticate)
 
-	r.Post("/register", handleManager.Register)
-	r.Get("/token", handleManager.GetToken)
+	r.Post("/buy", handleManager.Buy)
+	r.Post("/commit", handleManager.CommitOrder)
+	// TODO support list options or new handler
+	r.Get("/orders", handleManager.GetOrders)
 	return server, nil
 }

@@ -26,9 +26,8 @@ func NewServer(addr string, port int, jwtSecret string) (*Server, error) {
 	r.Use(mwManager.RecoverRequest)
 	r.Use(mwManager.Authenticate)
 
-	r.Post("/buy", handleManager.Buy)
-	r.Post("/commit", handleManager.CommitOrder)
-	// TODO support list options or new handler
-	r.Get("/orders", handleManager.GetOrders)
+	r.Post("/balance/add", handleManager.AddBalance)
+	r.Post("/balance/sub", handleManager.SubBalance)
+	r.Get("/balance", handleManager.GetBalance)
 	return server, nil
 }

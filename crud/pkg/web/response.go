@@ -1,4 +1,4 @@
-package server
+package web
 
 import (
 	"encoding/json"
@@ -7,6 +7,11 @@ import (
 	"net/http"
 	"onlinestore/pkg/validation"
 )
+
+func WriteError(w http.ResponseWriter, msg string, code int) {
+	w.WriteHeader(code)
+	WriteData(w, &RequestStatus{"error", msg})
+}
 
 func WriteBadRequest(w http.ResponseWriter, msg string) {
 	w.WriteHeader(http.StatusBadRequest)
