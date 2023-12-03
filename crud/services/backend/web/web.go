@@ -26,9 +26,6 @@ func NewServer(addr string, port int, jwtSecret string, PaymentAddr, Authorizati
 	mwManager := middlewares.NewMiddlewareManager(jwtSecret)
 	r.Use(mwManager.RecoverRequest)
 
-	// TODO(albert-si) add rate limiter
-
-	// TODO(albert-si) add username to all requests
 	r.Post("/billing/balance/add", mwManager.Authenticate(http.HandlerFunc(handleManager.AddBalance)).ServeHTTP)
 	r.Post("/billing/balance/sub", mwManager.Authenticate(http.HandlerFunc(handleManager.SubBalance)).ServeHTTP)
 	r.Get("/billing/balance", mwManager.Authenticate(http.HandlerFunc(handleManager.GetBalance)).ServeHTTP)

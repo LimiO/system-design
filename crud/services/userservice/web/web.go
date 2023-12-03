@@ -25,8 +25,6 @@ func NewServer(addr string, port int, jwtSecret string) (*Server, error) {
 	r.Use(mwManager.RecoverRequest)
 	r.Use(mwManager.Authenticate)
 
-	// TODO(albert-si) authorize user to do post requests
-
 	r.Get("/user", handleManager.GetUser)
 	r.Put("/user", handleManager.PutUser)
 	r.Delete("/user", handleManager.DeleteUser)

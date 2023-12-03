@@ -18,7 +18,6 @@ type Config struct {
 }
 
 func main() {
-	// TODO запустить горутину, которая через 15 минут отменит заказ
 	cfg, err := config.Read[Config](configPath)
 	if err != nil {
 		log.Fatalf("failed to read config %q: %v", configPath, err)

@@ -15,8 +15,6 @@ type HandlerManager struct {
 	tokenManager *jwt.TokenManager
 }
 
-// TODO(albert-si) replace all internal errors with log fatal
-
 func NewHandlerManager(jwtSecret string) (*HandlerManager, error) {
 	tokenManager := jwt.NewTokenManager(jwtSecret)
 	dbManager, err := db.NewManager()
