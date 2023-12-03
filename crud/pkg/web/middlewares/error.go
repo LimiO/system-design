@@ -20,7 +20,6 @@ func (m *MiddlewareManager) RecoverRequest(next http.Handler) http.Handler {
 			if !ok {
 				err = fmt.Errorf("%+v", v)
 			}
-
 			m.HandleError(w, r, err)
 		}()
 		next.ServeHTTP(w, r)

@@ -1,12 +1,57 @@
 version: '3.9'
 services:
-  user-api:
+  userservice:
     build:
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
+    hostname: "userservice"
     volumes:
       - ./:/crud:rw
-    # command: "go run cmd/bin/server/main.go"
-    # command: "ls -la ."
-
+    command: "go run services/userservice/cmd/main.go"
+    env_file:
+      - .env
+  paymentservice:
+    build:
+      dockerfile: Dockerfile
+    ports:
+      - "8084:8084"
+    hostname: "paymentservice"
+    volumes:
+      - ./:/crud:rw
+    command: "go run services/paymentservice/cmd/main.go"
+    env_file:
+      - .env
+  purchaseservice:
+    build:
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    hostname: "purchaseservice"
+    volumes:
+      - ./:/crud:rw
+    command: "go run services/purchaseservice/cmd/main.go"
+    env_file:
+      - .env
+  authorizationservice:
+    build:
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    hostname: "authorizationservice"
+    volumes:
+      - ./:/crud:rw
+    command: "go run services/authorizationservice/cmd/main.go"
+    env_file:
+      - .env
+  backend:
+    build:
+      dockerfile: Dockerfile
+    ports:
+      - "8085:8085"
+    hostname: "backend"
+    volumes:
+      - ./:/crud:rw
+    command: "go run services/backend/cmd/main.go"
+    env_file:
+      - .env

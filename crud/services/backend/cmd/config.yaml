@@ -1,0 +1,12 @@
+server:
+  port: 8085
+  addr: "0.0.0.0"
+services:
+  payment:
+    addr: "paymentservice:8084"
+  authorization:
+    addr: "authorizationservice:8082"
+  user:
+    addr: "userservice:8080"
+  purchases:
+    addr: "purchaseservice:8083"

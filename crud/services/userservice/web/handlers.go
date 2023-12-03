@@ -2,7 +2,6 @@ package web
 
 import (
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	"log"
 	"net/http"
 	"onlinestore/pkg/models"
@@ -46,7 +45,7 @@ func (h *HandlerManager) Health(w http.ResponseWriter, _ *http.Request) {
 func (h *HandlerManager) GetUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	username := chi.URLParam(r, "username")
+	username := web.GetLogin(r.Context())
 	user, code, err := h.GetUserOrStatusCode(username)
 	if err != nil {
 		log.Printf("failed to get user: %v", err)
@@ -88,7 +87,7 @@ func (h *HandlerManager) PostUser(w http.ResponseWriter, r *http.Request) {
 func (h *HandlerManager) PutUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	username := chi.URLParam(r, "username")
+	username := web.GetLogin(r.Context())
 	oldUser, code, err := h.GetUserOrStatusCode(username)
 	if err != nil {
 		log.Printf("failed to get user: %v", err)
@@ -124,7 +123,7 @@ func (h *HandlerManager) PutUser(w http.ResponseWriter, r *http.Request) {
 func (h *HandlerManager) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	username := chi.URLParam(r, "username")
+	username := web.GetLogin(r.Context())
 	user, code, err := h.GetUserOrStatusCode(username)
 	if err != nil {
 		log.Printf("failed to get user: %v", err)

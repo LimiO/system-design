@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -44,6 +45,20 @@ func (m *Manager) CreateTables(initReq string) error {
 }
 
 func (m *Manager) Get(query string, params []interface{}, scanFields []interface{}) (bool, error) {
+	row := m.GetDB().QueryRow(query, params...)
+	if err := row.Err(); err != nil {
+		return false, fmt.Errorf("failed to get: %v", err)
+	}
+	if err := row.Scan(scanFields...); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (m *Manager) List(query string, params []interface{}, scanFields []interface{}) (bool, error) {
 	row := m.GetDB().QueryRow(query, params...)
 	if err := row.Err(); err != nil {
 		return false, fmt.Errorf("failed to get: %v", err)

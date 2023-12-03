@@ -27,5 +27,6 @@ func NewServer(addr string, port int, jwtSecret string) (*Server, error) {
 
 	r.Post("/register", handleManager.Register)
 	r.Get("/token", handleManager.GetToken)
+	r.Post("/unregister", handleManager.Unregister)
 	return server, nil
 }

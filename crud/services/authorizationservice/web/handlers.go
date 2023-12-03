@@ -91,3 +91,32 @@ func (h *HandlerManager) GetToken(w http.ResponseWriter, r *http.Request) {
 	}
 	web.WriteData(w, &TokenResponse{Token: token})
 }
+
+func (h *HandlerManager) Unregister(w http.ResponseWriter, r *http.Request) {
+	req, err := web.DecodeHttpBody[DeleteTokenRequest](r.Body)
+	if err != nil {
+		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	passInfo, err := h.dbManager.GetUserPassword(req.Username)
+	if err != nil {
+		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if passInfo == nil {
+		web.WriteError(w, fmt.Sprintf("user not found"), http.StatusNotFound)
+		return
+	}
+
+	if passInfo.Passhash != jwt.MakeMD5Hash(req.Password) {
+		web.WriteError(w, fmt.Sprintf("wrong password"), http.StatusForbidden)
+		return
+	}
+
+	if err = h.dbManager.DeleteUserPassword(req.Username); err != nil {
+		web.WriteError(w, fmt.Sprintf("failed to delete user password: %v", err), http.StatusForbidden)
+		return
+	}
+
+	web.WriteData(w, &DeleteTokenResponse{})
+}

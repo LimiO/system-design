@@ -18,11 +18,6 @@ func WriteBadRequest(w http.ResponseWriter, msg string) {
 	WriteData(w, &RequestStatus{"error", fmt.Sprintf("bad request: %v", msg)})
 }
 
-func WriteNotFound(w http.ResponseWriter, msg string) {
-	w.WriteHeader(http.StatusNotFound)
-	WriteData(w, &RequestStatus{"error", fmt.Sprintf("not found: %v", msg)})
-}
-
 func WriteStatusOK(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 	WriteData(w, &RequestStatus{Status: "ok"})

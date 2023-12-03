@@ -8,3 +8,11 @@ type TokenRequest struct {
 type TokenResponse struct {
 	Token string `json:"token"`
 }
+
+type DeleteTokenRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type DeleteTokenResponse struct {
+}

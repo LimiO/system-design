@@ -53,7 +53,7 @@ func (h *HandlerManager) CommitOrder(w http.ResponseWriter, r *http.Request) {
 		web.WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	err = h.dbManager.UpdateOrder(req.OrderID, db.Paid)
+	err = h.dbManager.UpdateOrder(req.OrderID, db.PaidStatus(req.Status))
 	if err != nil {
 		web.WriteError(w, err.Error(), http.StatusBadRequest)
 		return
@@ -63,14 +63,13 @@ func (h *HandlerManager) CommitOrder(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (h *HandlerManager) GetOrders(w http.ResponseWriter, r *http.Request) {
+func (h *HandlerManager) GetOrder(w http.ResponseWriter, r *http.Request) {
 	req, err := web.DecodeHttpBody[GetOrderRequest](r.Body)
 	if err != nil {
 		web.WriteError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	// TODO(albert-si) add username to all requests and filter orders by username
 	order, err := h.dbManager.GetOrder(req.OrderID)
 	if err != nil {
 		web.WriteError(w, err.Error(), http.StatusBadRequest)
@@ -81,4 +80,22 @@ func (h *HandlerManager) GetOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	web.WriteData(w, &GetOrderResponse{Order: order})
+}
+
+func (h *HandlerManager) GetOrders(w http.ResponseWriter, r *http.Request) {
+	req, err := web.DecodeHttpBody[GetOrdersRequest](r.Body)
+	if err != nil {
+		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if req.Count == 0 {
+		req.Count = 50
+	}
+	orders, err := h.dbManager.GetOrders(web.GetLogin(r.Context()), req.Count)
+	if err != nil {
+		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	web.WriteData(w, &GetOrdersResponse{Orders: orders})
 }

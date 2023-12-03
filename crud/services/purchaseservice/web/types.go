@@ -15,6 +15,7 @@ type BuyResponse struct {
 
 type CommitOrderRequest struct {
 	OrderID int `json:"order_id"`
+	Status  int `json:"status"`
 }
 
 type CommitOrderResponse struct {
@@ -27,4 +28,12 @@ type GetOrderRequest struct {
 
 type GetOrderResponse struct {
 	Order *models.Order `json:"order"`
+}
+
+type GetOrdersRequest struct {
+	Count int `json:"count"`
+}
+
+type GetOrdersResponse struct {
+	Orders []*models.Order `json:"orders"`
 }

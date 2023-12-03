@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"fmt"
-
 	"onlinestore/db"
 	"onlinestore/pkg/models"
 )
@@ -34,8 +33,14 @@ const (
 	);
 	INSERT OR IGNORE INTO products(product_id, count, price) VALUES(0, 10, 50);
 	INSERT OR IGNORE INTO products(product_id, count, price) VALUES(1, 20, 30);
+	INSERT OR IGNORE INTO products(product_id, count, price) VALUES(2, 30, 30);
+	INSERT OR IGNORE INTO products(product_id, count, price) VALUES(3, 40, 30);
+	INSERT OR IGNORE INTO products(product_id, count, price) VALUES(4, 50, 30);
 	`
-	getOrderQuery   = `SELECT * FROM orders WHERE order_id = ?;`
+	getOrderQuery  = `SELECT * FROM orders WHERE order_id = ?;`
+	listOrderQuery = `SELECT * 
+	FROM orders
+	WHERE username = ? LIMIT ?;`
 	getProductQuery = `SELECT * FROM products WHERE product_id = ?;`
 	addProductQuery = `UPDATE products
 		SET count = count + ?
@@ -48,6 +53,18 @@ const (
 	updateOrderQuery = `UPDATE orders
 		SET paid = ?
 		WHERE order_id = ?;`
+	revertProductsQuery = `UPDATE products
+	SET count = count + (
+		SELECT count
+		FROM orders
+		WHERE products.product_id = orders.product_id
+		AND orders.order_id = ?
+	)
+	WHERE product_id IN (
+		SELECT product_id
+		FROM orders
+		WHERE order_id = ?
+	);`
 )
 
 type Manager struct {
@@ -72,6 +89,26 @@ func (m *Manager) GetOrder(orderID int) (*models.Order, error) {
 		return result, nil
 	}
 	return nil, err
+}
+
+func (m *Manager) GetOrders(username string, limit int) ([]*models.Order, error) {
+	rows, err := m.GetDB().Query(listOrderQuery, username, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get orders: %v", err)
+	}
+	defer rows.Close()
+
+	var result []*models.Order
+	for rows.Next() {
+		var order models.Order
+		err = rows.Scan(&order.OrderID, &order.ProductID, &order.Price, &order.Count, &order.Username, &order.Paid)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan row: %v", err)
+		}
+		result = append(result, &order)
+	}
+
+	return result, nil
 }
 
 func (m *Manager) GetProduct(productID int) (*models.Product, error) {
@@ -131,6 +168,12 @@ func (m *Manager) UpdateOrder(orderID int, status PaidStatus) error {
 	affected, err := result.RowsAffected()
 	if affected == 0 || err != nil {
 		return fmt.Errorf("failed to update order %d, may be order not found", orderID)
+	}
+	if status == Cancelled {
+		_, err = m.GetDB().Exec(revertProductsQuery, orderID, orderID)
+		if err != nil {
+			return fmt.Errorf("failed to create order: %v", err)
+		}
 	}
 	return nil
 }

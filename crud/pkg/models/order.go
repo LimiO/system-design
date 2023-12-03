@@ -6,7 +6,7 @@ type Order struct {
 	Price     int    `db:"price" json:"price"`
 	Count     int    `db:"count" json:"count"`
 	Username  string `db:"username" json:"username"`
-	Paid      bool   `db:"paid" json:"paid"`
+	Paid      int    `db:"paid" json:"paid"`
 }
 
 type Product struct {
