@@ -2,8 +2,10 @@ package web
 
 import (
 	"fmt"
-	"github.com/go-chi/chi/v5"
+	"log"
 	"net/http"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type Server struct {
@@ -20,5 +22,6 @@ func NewServer(addr string, port int, r chi.Router) *Server {
 }
 
 func (s *Server) Start() error {
+	log.Println("start server!")
 	return s.ListenAndServe()
 }

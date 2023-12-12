@@ -27,6 +27,8 @@ func NewServer(addr string, port int, jwtSecret string) (*Server, error) {
 	r.Use(mwManager.Authenticate)
 
 	r.Post("/balance/add", handleManager.AddBalance)
+	r.Post("/balance/reserve", handleManager.ReserveBalance)
+	r.Post("/balance/commit", handleManager.Commit)
 	r.Post("/balance/sub", handleManager.SubBalance)
 	r.Get("/balance", handleManager.GetBalance)
 	return server, nil

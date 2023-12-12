@@ -8,6 +8,7 @@ import (
 	"onlinestore/internal/jwt"
 	"onlinestore/pkg/web"
 	"onlinestore/services/authorizationservice/db"
+	"onlinestore/services/authorizationservice/types"
 )
 
 type HandlerManager struct {
@@ -28,9 +29,9 @@ func NewHandlerManager(jwtSecret string) (*HandlerManager, error) {
 }
 
 func (h *HandlerManager) Register(w http.ResponseWriter, r *http.Request) {
-	req, err := web.DecodeHttpBody[TokenRequest](r.Body)
+	req, err := web.DecodeHttpBody[types.TokenRequest](r.Body)
 	if err != nil {
-		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		web.WriteBadRequest(w, err.Error())
 		return
 	}
 	if req.Password == "" || req.Username == "" {
@@ -49,27 +50,28 @@ func (h *HandlerManager) Register(w http.ResponseWriter, r *http.Request) {
 
 	hashed := jwt.MakeMD5Hash(req.Password)
 	if err = h.dbManager.CreateUserPassword(req.Username, hashed); err != nil {
-		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		web.WriteBadRequest(w, err.Error())
 		return
 	}
 
 	token, err := h.tokenManager.CreateToken(req.Username)
 	if err != nil {
-		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		web.WriteBadRequest(w, err.Error())
 		return
 	}
-	web.WriteData(w, &TokenResponse{Token: token})
+
+	web.WriteData(w, &types.TokenResponse{Token: token})
 }
 
 func (h *HandlerManager) GetToken(w http.ResponseWriter, r *http.Request) {
-	req, err := web.DecodeHttpBody[TokenRequest](r.Body)
+	req, err := web.DecodeHttpBody[types.TokenRequest](r.Body)
 	if err != nil {
-		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		web.WriteBadRequest(w, err.Error())
 		return
 	}
 	passInfo, err := h.dbManager.GetUserPassword(req.Username)
 	if err != nil {
-		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		web.WriteBadRequest(w, err.Error())
 		return
 	}
 	if passInfo == nil {
@@ -84,21 +86,22 @@ func (h *HandlerManager) GetToken(w http.ResponseWriter, r *http.Request) {
 
 	token, err := h.tokenManager.CreateToken(req.Username)
 	if err != nil {
-		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		web.WriteBadRequest(w, err.Error())
 		return
 	}
-	web.WriteData(w, &TokenResponse{Token: token})
+
+	web.WriteData(w, &types.TokenResponse{Token: token})
 }
 
 func (h *HandlerManager) Unregister(w http.ResponseWriter, r *http.Request) {
-	req, err := web.DecodeHttpBody[DeleteTokenRequest](r.Body)
+	req, err := web.DecodeHttpBody[types.DeleteTokenRequest](r.Body)
 	if err != nil {
-		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		web.WriteBadRequest(w, err.Error())
 		return
 	}
 	passInfo, err := h.dbManager.GetUserPassword(req.Username)
 	if err != nil {
-		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		web.WriteBadRequest(w, err.Error())
 		return
 	}
 	if passInfo == nil {
@@ -116,5 +119,5 @@ func (h *HandlerManager) Unregister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	web.WriteData(w, &DeleteTokenResponse{})
+	web.WriteData(w, &types.DeleteTokenResponse{})
 }

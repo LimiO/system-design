@@ -9,10 +9,22 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+const (
+	Unknown   CommitStatus = 0
+	Committed CommitStatus = 1
+	Cancelled CommitStatus = 2
+)
+
+var (
+	commitQuery = fmt.Sprintf(`UPDATE reserve SET status = ? WHERE reserve_id = ?;`)
+)
+
 type Manager struct {
 	conn *sql.Conn
 	db   *sql.DB
 }
+
+type CommitStatus int
 
 func NewManager(dbName string, initReq string) (*Manager, error) {
 	db, err := sql.Open("sqlite3", dbName)
@@ -70,4 +82,19 @@ func (m *Manager) List(query string, params []interface{}, scanFields []interfac
 		return false, err
 	}
 	return true, nil
+}
+
+func (m *Manager) Commit(reserveID int, status CommitStatus, rollbackQuery string, rollbackArgs ...any) error {
+	_, err := m.GetDB().Exec(commitQuery, status, reserveID)
+	if err != nil {
+		return fmt.Errorf("failed to commit: %v", err)
+	}
+
+	if status == Cancelled {
+		_, err = m.GetDB().Exec(rollbackQuery, rollbackArgs...)
+		if err != nil {
+			return fmt.Errorf("failed to rollback: %v", err)
+		}
+	}
+	return nil
 }

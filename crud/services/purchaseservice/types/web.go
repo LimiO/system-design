@@ -1,4 +1,4 @@
-package web
+package types
 
 import "onlinestore/pkg/models"
 
@@ -36,4 +36,12 @@ type GetOrdersRequest struct {
 
 type GetOrdersResponse struct {
 	Orders []*models.Order `json:"orders"`
+}
+
+type SubBalanceRequest struct {
+	Username string `json:"username"`
+	Amount   int    `json:"amount"`
+}
+
+type SubBalanceResponse struct {
 }

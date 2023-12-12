@@ -1,4 +1,4 @@
-package web
+package types
 
 type AddBalanceRequest struct {
 	Username string `json:"username"`
@@ -22,4 +22,18 @@ type GetBalanceRequest struct {
 
 type GetBalanceResponse struct {
 	Balance int `json:"balance"`
+}
+
+type ReserveBalanceRequest struct {
+	Username string `json:"username"`
+	Amount   int    `json:"amount"`
+}
+
+type ReserveBalanceResponse struct {
+	ReserveID int `json:"reserve_id"`
+}
+
+type CommitRequest struct {
+	ReserveID int `json:"reserve_id"`
+	Status    int `json:"status"`
 }

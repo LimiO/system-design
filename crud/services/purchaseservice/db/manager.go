@@ -1,7 +1,6 @@
 package db
 
 import (
-	"context"
 	"fmt"
 	"onlinestore/db"
 	"onlinestore/pkg/models"
@@ -20,7 +19,6 @@ const (
 	initQuery = `
 	CREATE TABLE IF NOT EXISTS products (
 		product_id INTEGER NOT NULL PRIMARY KEY,
-		count INTEGER NOT NULL,
 		price INTEGER NOT NULL
 	);
 	CREATE TABLE IF NOT EXISTS orders (
@@ -31,11 +29,11 @@ const (
 		username VARCHAR(64) NOT NULL,
 		paid INTEGER NOT NULL
 	);
-	INSERT OR IGNORE INTO products(product_id, count, price) VALUES(0, 10, 50);
-	INSERT OR IGNORE INTO products(product_id, count, price) VALUES(1, 20, 30);
-	INSERT OR IGNORE INTO products(product_id, count, price) VALUES(2, 30, 30);
-	INSERT OR IGNORE INTO products(product_id, count, price) VALUES(3, 40, 30);
-	INSERT OR IGNORE INTO products(product_id, count, price) VALUES(4, 50, 30);
+	INSERT OR IGNORE INTO products(product_id, price) VALUES(0, 50);
+	INSERT OR IGNORE INTO products(product_id, price) VALUES(1, 30);
+	INSERT OR IGNORE INTO products(product_id, price) VALUES(2, 30);
+	INSERT OR IGNORE INTO products(product_id, price) VALUES(3, 30);
+	INSERT OR IGNORE INTO products(product_id, price) VALUES(4, 30);
 	`
 	getOrderQuery  = `SELECT * FROM orders WHERE order_id = ?;`
 	listOrderQuery = `SELECT * 
@@ -44,11 +42,8 @@ const (
 	getProductQuery = `SELECT * FROM products WHERE product_id = ?;`
 	addProductQuery = `UPDATE products
 		SET count = count + ?
-		WHERE product_id = ? AND (count + ?) >= 0;`
-	subProductQuery = `UPDATE products
-		SET count = count - ?
-		WHERE product_id = ? AND (count - ?) >= 0 AND price = ?;`
-	createOrderQuery = `INSERT INTO orders(product_id, price, count, username, paid)
+		WHERE product_id = ?;`
+	createOrderQuery = `INSERT OR IGNORE INTO orders(product_id, price, count, username, paid)
 		VALUES(?, (SELECT products.price FROM products WHERE product_id = ?), ?, ?, 0);`
 	updateOrderQuery = `UPDATE orders
 		SET paid = ?
@@ -130,26 +125,8 @@ func (m *Manager) AddProduct(productID int, countToChange int) error {
 }
 
 func (m *Manager) CreateOrder(productID int, count int, price int, username string) (int, error) {
-	var err error
-	tx, err := m.GetDB().BeginTx(context.Background(), nil)
-	defer func() {
-		if err != nil {
-			_ = tx.Rollback()
-		} else {
-			_ = tx.Commit()
-		}
-	}()
-
-	result, err := m.GetDB().Exec(subProductQuery, count, productID, count, price)
-	if err != nil {
-		return 0, fmt.Errorf("failed to sub product %q count: %v", productID, err)
-	}
-	affected, err := result.RowsAffected()
-	if err != nil || affected == 0 {
-		return 0, fmt.Errorf("can't sub from products")
-	}
-
-	result, err = m.GetDB().Exec(createOrderQuery, productID, productID, count, username)
+	// TODO(albert-si) check price equal
+	result, err := m.GetDB().Exec(createOrderQuery, productID, productID, count, username)
 	if err != nil {
 		return 0, fmt.Errorf("failed to create order: %v", err)
 	}

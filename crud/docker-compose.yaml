@@ -55,3 +55,25 @@ services:
     command: "go run services/backend/cmd/main.go"
     env_file:
       - .env
+  stock:
+    build:
+      dockerfile: Dockerfile
+    ports:
+      - "8086:8086"
+    hostname: "stockservice"
+    volumes:
+      - ./:/crud:rw
+    command: "go run services/stock/cmd/main.go"
+    env_file:
+      - .env
+  courier:
+    build:
+      dockerfile: Dockerfile
+    ports:
+      - "8087:8087"
+    hostname: "courier"
+    volumes:
+      - ./:/crud:rw
+    command: "go run services/courier/cmd/main.go"
+    env_file:
+      - .env

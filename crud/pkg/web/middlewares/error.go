@@ -29,6 +29,7 @@ func (m *MiddlewareManager) RecoverRequest(next http.Handler) http.Handler {
 
 func (m *MiddlewareManager) HandleError(w http.ResponseWriter, _ *http.Request, err error) {
 	w.WriteHeader(500)
+	log.Println("err", err.Error())
 	if err = json.NewEncoder(w).Encode(web.ResponseMetadata{
 		Code:  1,
 		Error: err.Error(),

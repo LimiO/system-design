@@ -1,21 +1,19 @@
 package web
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"onlinestore/pkg/models"
-	web2 "onlinestore/services/purchaseservice/web"
-
-	"onlinestore/services/backend/clients/auth"
-	"onlinestore/services/backend/clients/payment"
-	"onlinestore/services/backend/clients/purchases"
-	"onlinestore/services/backend/clients/user"
 
 	"onlinestore/internal/jwt"
+	"onlinestore/pkg/models"
 	"onlinestore/pkg/web"
-	authweb "onlinestore/services/authorizationservice/web"
+	"onlinestore/services/backend/types"
+
+	auth "onlinestore/services/authorizationservice/pkg/client"
+	payment "onlinestore/services/paymentservice/pkg/client"
+	purchases "onlinestore/services/purchaseservice/pkg/client"
+	user "onlinestore/services/userservice/pkg/client"
 )
 
 type HandlerManager struct {
@@ -59,122 +57,180 @@ func NewHandlerManager(jwtSecret string, PaymentAddr, AuthorizationAddr, Purchas
 }
 
 func (h *HandlerManager) AddBalance(w http.ResponseWriter, r *http.Request) {
-	h.RetranslateRequest(w, r, h.paymentClient.AddBalance)
+	login := web.GetLogin(r.Context())
+
+	req, err := web.DecodeHttpBody[types.AddBalanceRequest](r.Body)
+	if err != nil {
+		web.WriteBadRequest(w, err.Error())
+		return
+	}
+
+	err = h.paymentClient.AddBalance(login, req.Amount, r.Header)
+	if err != nil {
+		web.WriteError(w, fmt.Sprintf("failed to add balance: %v", err), http.StatusBadRequest)
+		return
+	}
+	web.WriteData(w, types.AddBalanceResponse{})
 }
 
 func (h *HandlerManager) SubBalance(w http.ResponseWriter, r *http.Request) {
-	h.RetranslateRequest(w, r, h.paymentClient.SubBalance)
+	login := web.GetLogin(r.Context())
+
+	req, err := web.DecodeHttpBody[types.SubBalanceRequest](r.Body)
+	if err != nil {
+		web.WriteBadRequest(w, err.Error())
+		return
+	}
+
+	err = h.paymentClient.SubBalance(login, req.Amount, r.Header)
+	if err != nil {
+		web.WriteError(w, fmt.Sprintf("failed to sub balance: %v", err), http.StatusBadRequest)
+		return
+	}
+	web.WriteData(w, types.SubBalanceResponse{})
 }
 
 func (h *HandlerManager) GetBalance(w http.ResponseWriter, r *http.Request) {
-	h.RetranslateRequest(w, r, h.paymentClient.GetBalance)
+	login := web.GetLogin(r.Context())
+	balance, err := h.paymentClient.GetBalance(login, r.Header)
+	if err != nil {
+		web.WriteError(w, fmt.Sprintf("failed to get balance: %v", err), http.StatusBadRequest)
+		return
+	}
+	web.WriteData(w, types.GetBalanceResponse{
+		Balance: balance,
+	})
 }
 
 func (h *HandlerManager) GetUser(w http.ResponseWriter, r *http.Request) {
-	h.RetranslateRequest(w, r, h.userClient.GetUser)
+	login := web.GetLogin(r.Context())
+
+	u, err := h.userClient.GetUser(login, r.Header)
+	if err != nil {
+		web.WriteError(w, fmt.Sprintf("failed to get user %q: %v", login, err), http.StatusBadRequest)
+		return
+	}
+	web.WriteData(w, u)
 }
 
 func (h *HandlerManager) PostUser(w http.ResponseWriter, r *http.Request) {
-	req, err := web.DecodeHttpBody[models.User](r.Body)
+	u, err := web.DecodeHttpBody[models.User](r.Body)
 	if err != nil {
-		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		web.WriteBadRequest(w, err.Error())
 		return
 	}
 
-	data := map[string]string{
-		"username": req.Username,
-		"password": req.Password,
-	}
-	registerBody, _ := json.Marshal(data)
-
-	registerResp, err := h.authClient.Register(registerBody, r.Header)
+	token, err := h.authClient.Register(u.Username, u.Password, r.Header)
 	if err != nil {
-		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		web.WriteError(w, fmt.Sprintf("failed to register: %v", err), http.StatusBadRequest)
 		return
 	}
-	if registerResp.StatusCode != http.StatusOK {
-		web.WriteError(w, "failed to register", registerResp.StatusCode)
-		return
-	}
-	tokenResp, _ := web.DecodeHttpBody[authweb.TokenResponse](registerResp.Body)
 
-	r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenResp.Token))
-	d, _ := json.Marshal(req)
-	userResp, err := h.userClient.PostUser(d, r.Header)
+	r.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	err = h.userClient.PostUser(u, r.Header)
 	if err != nil {
-		web.WriteError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if userResp.StatusCode != http.StatusOK {
-		_, _ = h.authClient.Unregister(registerBody, r.Header)
-		web.WriteError(w, "failed to make user", userResp.StatusCode)
+		if unrerr := h.authClient.Unregister(u.Username, u.Password, r.Header); unrerr != nil {
+			web.WriteError(w, fmt.Sprintf("failed to unregister user: %v", unrerr), http.StatusInternalServerError)
+			return
+		}
+		web.WriteError(w, fmt.Sprintf("failed to make user: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	web.WriteData(w, tokenResp)
+	web.WriteData(w, types.TokenResponse{Token: token})
 }
 
 func (h *HandlerManager) PutUser(w http.ResponseWriter, r *http.Request) {
-	h.RetranslateRequest(w, r, h.userClient.PutUser)
+	u, err := web.DecodeHttpBody[models.User](r.Body)
+	if err != nil {
+		web.WriteBadRequest(w, err.Error())
+		return
+	}
+	err = h.userClient.PutUser(u, r.Header)
+	if err != nil {
+		web.WriteError(w, fmt.Sprintf("failed to put user: %v", err), http.StatusBadRequest)
+		return
+	}
+	web.WriteStatusOK(w)
 }
 
 func (h *HandlerManager) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	h.RetranslateRequest(w, r, h.userClient.DeleteUser)
+	login := web.GetLogin(r.Context())
+	err := h.userClient.DeleteUser(login, r.Header)
+	if err != nil {
+		web.WriteError(w, fmt.Sprintf("failed to delete user: %v", err), http.StatusBadRequest)
+		return
+	}
+	web.WriteStatusOK(w)
 }
 
 func (h *HandlerManager) GetToken(w http.ResponseWriter, r *http.Request) {
-	h.RetranslateRequest(w, r, h.authClient.GetToken)
+	req, err := web.DecodeHttpBody[types.TokenRequest](r.Body)
+	if err != nil {
+		web.WriteBadRequest(w, err.Error())
+		return
+	}
+
+	token, err := h.authClient.GetToken(req.Username, req.Password, r.Header)
+	if err != nil {
+		web.WriteError(w, fmt.Sprintf("failed to get token: %v", err), http.StatusBadRequest)
+		return
+	}
+	web.WriteData(w, types.TokenResponse{
+		Token: token,
+	})
 }
 
 func (h *HandlerManager) GetOrder(w http.ResponseWriter, r *http.Request) {
-	h.RetranslateRequest(w, r, h.purchasesClient.GetOrder)
+	req, err := web.DecodeHttpBody[types.GetOrderRequest](r.Body)
+	if err != nil {
+		web.WriteBadRequest(w, err.Error())
+		return
+	}
+
+	order, err := h.purchasesClient.GetOrder(req.Username, req.OrderID, r.Header)
+	if err != nil {
+		web.WriteError(w, fmt.Sprintf("failed to get order: %v", err), http.StatusBadRequest)
+		return
+	}
+	web.WriteData(w, types.GetOrderResponse{
+		Order: order,
+	})
 }
 
 func (h *HandlerManager) GetOrders(w http.ResponseWriter, r *http.Request) {
-	h.RetranslateRequest(w, r, h.purchasesClient.GetOrders)
+	req, err := web.DecodeHttpBody[types.GetOrdersRequest](r.Body)
+	if err != nil {
+		web.WriteBadRequest(w, err.Error())
+		return
+	}
+
+	orders, err := h.purchasesClient.GetOrders(req.Count, r.Header)
+	if err != nil {
+		web.WriteError(w, fmt.Sprintf("failed to get orders: %v", err), http.StatusBadRequest)
+		return
+	}
+	web.WriteData(w, types.GetOrdersResponse{
+		Orders: orders,
+	})
 }
 
 func (h *HandlerManager) Buy(w http.ResponseWriter, r *http.Request) {
-	buyReq, err := web.DecodeHttpBody[web2.BuyRequest](r.Body)
+	buyReq, err := web.DecodeHttpBody[types.BuyRequest](r.Body)
 	if err != nil {
-		web.WriteError(w, err.Error(), http.StatusBadRequest)
+		web.WriteBadRequest(w, err.Error())
 		return
 	}
-	body, _ := json.Marshal(buyReq)
 
-	purchResp, err := h.purchasesClient.Buy(body, r.Header)
+	orderID, total, err := h.purchasesClient.Buy(buyReq.Count, buyReq.Price, buyReq.ProductID, r.Header)
 	if err != nil {
-		web.WriteError(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-	if purchResp.StatusCode != http.StatusOK {
-		purchRespBytes, _ := io.ReadAll(purchResp.Body)
-		web.WriteError(w, fmt.Sprintf("failed to buy: %v", string(purchRespBytes)), purchResp.StatusCode)
-		return
-	}
-	purchBuyResp, _ := web.DecodeHttpBody[web2.BuyResponse](purchResp.Body)
-
-	subBalanceReq := &SubBalanceRequest{
-		Username: web.GetLogin(r.Context()),
-		Amount:   purchBuyResp.Total,
-	}
-	subBalanceReqData, _ := json.Marshal(subBalanceReq)
-	subBalanceResp, err := h.paymentClient.SubBalance(subBalanceReqData, r.Header)
-	commitOrderReq := web2.CommitOrderRequest{
-		OrderID: purchBuyResp.OrderID,
-	}
-	if subBalanceResp.StatusCode != http.StatusOK {
-		commitOrderReq.Status = 2
-		commitOrderReqData, _ := json.Marshal(commitOrderReq)
-		_, _ = h.purchasesClient.Commit(commitOrderReqData, r.Header)
-
-		subBalanceRespData, _ := io.ReadAll(subBalanceResp.Body)
-		web.WriteError(w, string(subBalanceRespData), subBalanceResp.StatusCode)
+		web.WriteBadRequest(w, err.Error())
 		return
 	}
 
-	commitOrderReq.Status = 1
-	commitOrderReqData, _ := json.Marshal(commitOrderReq)
-	_, _ = h.purchasesClient.Commit(commitOrderReqData, r.Header)
-	web.WriteData(w, purchBuyResp)
+	web.WriteData(w, types.BuyResponse{
+		OrderID: orderID,
+		Total:   total,
+	})
 }

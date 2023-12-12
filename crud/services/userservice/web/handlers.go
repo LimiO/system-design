@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"onlinestore/pkg/models"
 	"onlinestore/pkg/web"
+	"onlinestore/services/userservice/types"
 
 	"onlinestore/services/userservice/db"
 )
@@ -123,7 +124,18 @@ func (h *HandlerManager) PutUser(w http.ResponseWriter, r *http.Request) {
 func (h *HandlerManager) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	rsp, err := web.DecodeHttpBody[types.DeleteUser](r.Body)
+	if err != nil {
+		log.Printf("failed to decode http body: %v", err)
+		web.WriteBadRequest(w, err.Error())
+		return
+	}
+
 	username := web.GetLogin(r.Context())
+	if rsp.Username != username {
+		web.WriteBadRequest(w, fmt.Sprintf("username in response and token not equal"))
+		return
+	}
 	user, code, err := h.GetUserOrStatusCode(username)
 	if err != nil {
 		log.Printf("failed to get user: %v", err)

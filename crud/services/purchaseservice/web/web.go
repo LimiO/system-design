@@ -13,9 +13,9 @@ type Server struct {
 	*web.Server
 }
 
-func NewServer(addr string, port int, jwtSecret string) (*Server, error) {
+func NewServer(addr string, port int, jwtSecret string, paymentAddr string, courAddr string, stockAddr string) (*Server, error) {
 	r := chi.NewRouter()
-	handleManager, err := NewHandlerManager(jwtSecret)
+	handleManager, err := NewHandlerManager(jwtSecret, paymentAddr, courAddr, stockAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create handle manager: %v", err)
 	}

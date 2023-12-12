@@ -29,6 +29,7 @@ func NewServer(addr string, port int, jwtSecret string, PaymentAddr, Authorizati
 	r.Post("/billing/balance/add", mwManager.Authenticate(http.HandlerFunc(handleManager.AddBalance)).ServeHTTP)
 	r.Post("/billing/balance/sub", mwManager.Authenticate(http.HandlerFunc(handleManager.SubBalance)).ServeHTTP)
 	r.Get("/billing/balance", mwManager.Authenticate(http.HandlerFunc(handleManager.GetBalance)).ServeHTTP)
+
 	r.Get("/user", mwManager.Authenticate(http.HandlerFunc(handleManager.GetUser)).ServeHTTP)
 	r.Post("/user", handleManager.PostUser)
 	r.Put("/user", mwManager.Authenticate(http.HandlerFunc(handleManager.PutUser)).ServeHTTP)

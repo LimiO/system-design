@@ -1,3 +1,10 @@
 server:
   port: 8083
   addr: "0.0.0.0"
+services:
+  payment:
+    addr: "paymentservice:8084"
+  stock:
+    addr: "stock:8086"
+  courier:
+    addr: "courier:8087"

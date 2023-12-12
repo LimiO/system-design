@@ -30,7 +30,6 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to make server: %q", err)
 	}
-	log.Println("start server!")
 	if err = srv.Start(); err != nil {
 		log.Fatalf("server error: %v", err)
 	}

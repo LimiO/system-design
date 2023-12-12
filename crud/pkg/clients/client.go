@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"fmt"
 	"net/http"
+
+	"github.com/go-resty/resty/v2"
 )
 
 type BaseClient struct {
+	C    *resty.Client
 	Addr string
 }
 

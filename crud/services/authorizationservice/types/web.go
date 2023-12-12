@@ -1,4 +1,4 @@
-package web
+package types
 
 type TokenRequest struct {
 	Username string `json:"username"`
